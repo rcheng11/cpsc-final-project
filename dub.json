@@ -4,14 +4,18 @@
 	],
 	"copyright": "Copyright © 2025, Ron",
 	"dependencies": {
+		"bindbc-loader": "1.0.3",
 		"bindbc-opengl": "~>1.1.1",
-		"bindbc-sdl": "~>1.5.1"
+		"bindbc-sdl": "~>1.5.1",
+		"gtk-d": "~>3.11.0"
 	},
-    "versions":[
-        "GL_41"
-    ],
-    "stringImportPaths":["."],
 	"description": "Sprite Stacking and Normal Maps",
 	"license": "proprietary",
-	"name": "prog"
+	"name": "prog",
+	"stringImportPaths": [
+		"."
+	],
+	"versions": [
+		"GL_41"
+	]
 }
