@@ -1,5 +1,7 @@
 {
     "numLayers" : 1,
+    "stackVAngle" : 5,
+    "stackHAngle" : 5,
     "settings" : {
         "setting1" : "val",
         "setting2" : "val"
@@ -7,9 +9,9 @@
     "layers" : [
         {
             "id" : "0",
-            "x" : 0,
-            "y" : 0,
-            "z" : 0,
+            "x" : 0.0,
+            "y" : 0.0,
+            "z" : 0.0,
             "vAngle" : 0,
             "hAngle" : 0
         }

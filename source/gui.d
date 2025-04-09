@@ -3,6 +3,7 @@ Handles functions for the GUI interface.
 */
 module gui;
 import std.stdio;
+import std.conv;
 import core.thread;
 
 import gtk.MainWindow;
@@ -147,8 +148,73 @@ void launchProjectWindow(P3DObj model){
     Button spritePathBtn = new Button("Load Sprite");
     spritePathRow.packStart(spritePathEntry, false, false, 5);
     spritePathRow.packStart(spritePathBtn, false, false, 5);
+
+    Box spriteVAngleRow = new Box(Orientation.HORIZONTAL, 5);
+    Entry spriteVAngleEntry = new Entry(to!string(model.getVAngle)); // get initial val from spec
+    spriteVAngleEntry.setSizeRequest(50, 50);
+    spriteVAngleEntry.addOnChanged(delegate void(EditableIF e){
+        // update values of the model
+        try{
+            model.setVAngle(to!int(spriteVAngleEntry.getText()));
+        }
+        catch(ConvException){ // set to 0 if invalid
+            spriteVAngleEntry.setText("0");
+        }
+    });
+    Button spriteVAngleLeftBtn = new Button("◀");
+    spriteVAngleLeftBtn.addOnClicked(delegate void(Button b){
+        spriteVAngleEntry.setText(
+            to!string(to!int(spriteVAngleEntry.getText()) - 1)
+        );
+    });
+    Button spriteVAngleRightBtn = new Button("▶");
+    spriteVAngleRightBtn.addOnClicked(delegate void(Button b){
+        spriteVAngleEntry.setText(
+            to!string(to!int(spriteVAngleEntry.getText()) + 1)
+        );
+    });
+    Label spriteVAngleLabel = new Label("Sprite VAngle");
+    spriteVAngleRow.packStart(spriteVAngleLabel, false, false, 5);
+    spriteVAngleRow.packStart(spriteVAngleLeftBtn, false, false, 5);
+    spriteVAngleRow.packStart(spriteVAngleEntry, false, false, 5);
+    spriteVAngleRow.packStart(spriteVAngleRightBtn, false, false, 5);
+
+    Box spriteHAngleRow = new Box(Orientation.HORIZONTAL, 5);
+    Entry spriteHAngleEntry = new Entry(to!string(model.getHAngle)); // get initial val from spec
+    spriteHAngleEntry.setSizeRequest(50, 50);
+    spriteHAngleEntry.addOnChanged(delegate void(EditableIF e){
+        // update values of the model
+        try{
+            model.setHAngle(to!int(spriteHAngleEntry.getText()));
+        }
+        catch(ConvException){ // set to 0 if invalid
+            spriteHAngleEntry.setText("0");
+        }
+    });
+    Button spriteHAngleLeftBtn = new Button("◀");
+    spriteHAngleLeftBtn.addOnClicked(delegate void(Button b){
+        spriteHAngleEntry.setText(
+            to!string(to!int(spriteHAngleEntry.getText()) - 1)
+        );
+    });
+    Button spriteHAngleRightBtn = new Button("▶");
+    spriteHAngleRightBtn.addOnClicked(delegate void(Button b){
+        spriteHAngleEntry.setText(
+            to!string(to!int(spriteHAngleEntry.getText()) + 1)
+        );
+    });
+    Label spriteHAngleLabel = new Label("Sprite HAngle");
+    spriteHAngleRow.packStart(spriteHAngleLabel, false, false, 5);
+    spriteHAngleRow.packStart(spriteHAngleLeftBtn, false, false, 5);
+    spriteHAngleRow.packStart(spriteHAngleEntry, false, false, 5);
+    spriteHAngleRow.packStart(spriteHAngleRightBtn, false, false, 5);
+
     leftRows ~= new EventBox();
     leftRows[0].add(spritePathRow);
+    leftRows ~= new EventBox();
+    leftRows[1].add(spriteVAngleRow);
+    leftRows ~= new EventBox();
+    leftRows[2].add(spriteHAngleRow);
     
     // add to main container
     foreach(row ; leftRows){
@@ -167,12 +233,17 @@ void launchProjectWindow(P3DObj model){
         writeln("button clicked");
         app = GraphicsApp(previewW, previewH);
         app.SetupScene();
+        app.loadModel(model);
         // technique here borrowed from former groupmate Alexis Nketia
         // from our final project for Game Engines class
         int counter = 0;
         auto idle = new Idle(delegate bool(){
             app.AdvanceFrame();
-            return app.mGameIsRunning;
+            bool appRunning = app.mGameIsRunning;
+            if(!appRunning){ // kill the app data/window when running stops
+                destroy(app);
+            }
+            return appRunning;
         });
     });
 

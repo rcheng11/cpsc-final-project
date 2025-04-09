@@ -3,6 +3,7 @@ module graphics_app;
 import std.stdio;
 import sdl_abstraction;
 import opengl_abstraction;
+import parser;
 import bindbc.sdl;
 import bindbc.opengl;
 
@@ -136,6 +137,7 @@ struct GraphicsApp{
 
     Mesh mTriangleMesh;
     GLuint mBasicGraphicsPipeline;
+    P3DObj mObj; // sprite stack object
 
     int mScreenWidth = 640;
     int mScreenHeight = 480;
@@ -177,7 +179,12 @@ struct GraphicsApp{
         // Destroy our window
         SDL_DestroyWindow(mWindow);
     }
-
+    void loadModel(P3DObj obj){
+        // load model (only call after OpenGL instance loaded!)
+        // load textures
+        mObj = obj;
+        obj.initialize();
+    }
     /// Handle input
     void Input(){
         // Store an SDL Event

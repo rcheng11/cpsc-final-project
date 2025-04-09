@@ -1,3 +1,6 @@
+/*
+SDL Abstraction adapted from Mike Shah's course materials for CPSC 409, Yale University.
+*/
 /// @file: 
 // Load the SDL3 library
 module sdl_abstraction;

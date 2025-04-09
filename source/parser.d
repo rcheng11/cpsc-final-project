@@ -6,6 +6,7 @@ import std.json;
 import jsonabstraction;
 import std.path;
 import std.array;
+import std.conv;
 
 import bindbc.sdl;
 import bindbc.opengl;
@@ -80,18 +81,29 @@ class P3DSlice{
     */
     Texture mSprite;
     Texture mNormalMap;
+    string mSpriteFPath;
+    string mNormalFPath;
     float mX;
     float mY;
     float mZ;
     int mVAngle;
     int mHAngle;
 
-    this(Texture sprite, Texture normalMap, float x, float y, float z){
+    this(string spriteFPath, string normalFPath, float x, float y, float z, int vAngle, int hAngle){
         mX = x;
         mY = y;
         mZ = z;
-        mSprite = sprite;
-        mNormalMap = normalMap;
+        mSpriteFPath = spriteFPath;
+        mNormalFPath = normalFPath;
+        mVAngle = vAngle;
+        mHAngle = hAngle;
+    }
+    void generateTextures(){ 
+        // load textures from file paths and store them
+        // only when an OpenGL context has been created
+        mSprite = new Texture(mSpriteFPath);
+        mNormalMap = new Texture(mNormalFPath);
+
     }
 }
 class P3DSpriteStack{
@@ -106,9 +118,20 @@ class P3DSpriteStack{
     this(){
         mSlices = [];
     }
+    void loadTextures(){
+        foreach(slice ; mSlices){
+            slice.generateTextures();
+        }
+    }
     P3DSlice addSlice(P3DSlice slice){
         mSlices ~= slice;
         return slice;
+    }
+    void setVAngle(int vAngle){
+        mVAngle = vAngle;
+    }
+    void setHAngle(int hAngle){
+        mHAngle = hAngle;
     }
 }
 class P3DObj{
@@ -129,17 +152,49 @@ class P3DObj{
         modelName = split(mFilepath, dirSeparator)[$-1]; 
         // create mSpriteStack from directory:
         mSpriteStack = new P3DSpriteStack();
-        // use the JSON file to determine the number of layers
+        // parse JSON to get whole stack VAngle and HAngle
         JSONValue fileContents = parseJSONFromFile(buildPath(filepath, "spec.json"));
+        mSpriteStack.setVAngle(jsonToInt(fileContents["stackVAngle"]));
+        mSpriteStack.setHAngle(jsonToInt(fileContents["stackHAngle"]));
+        // use the JSON file to determine the number of layers to parse
         int numLayers = jsonToInt(fileContents["numLayers"]);
+        JSONValue layerArr = fileContents["layers"];
+        writeln("Parsing "~to!string(numLayers)~" layers...");
         for(int i = 0; i < numLayers; i++){
             // create a normal map and image texture (both png) 
-
+            JSONValue layer = layerArr[i];
+            string layerID = jsonToString(layer["id"]);
             // create a P3D slice
-
+            P3DSlice slice = new P3DSlice(
+                buildPath(filepath, "ImageData", layerID~".png"),
+                buildPath(filepath, "NormalData", layerID~".png"),
+                jsonToFloat(layer["x"]),
+                jsonToFloat(layer["y"]),
+                jsonToFloat(layer["z"]),
+                jsonToInt(layer["vAngle"]),
+                jsonToInt(layer["hAngle"])
+            );
             // add slice to sprite stack
+            mSpriteStack.addSlice(slice);
         }
 
+    }
+    void initialize(){
+        // initializes textures and other info once OpenGL 
+        // context has been opened
+        mSpriteStack.loadTextures();
+    }
+    void setVAngle(int vAngle){
+        mSpriteStack.mVAngle = vAngle;
+    }
+    void setHAngle(int hAngle){
+        mSpriteStack.mHAngle = hAngle;
+    }
+    int getVAngle(){
+        return mSpriteStack.mVAngle;
+    }
+    int getHAngle(){
+        return mSpriteStack.mHAngle;
     }
     void addLight(P3DLight light){
         mLights ~= light;
@@ -166,6 +221,7 @@ P3DObj loadFolder(string filepath){
     /* Loads a P3DObj given a filepath to a valid P3DObj folder.
     */
     while(!validateFolder(filepath)){}
+    writeln("Attempting to parse "~filepath);
     P3DObj res = new P3DObj(filepath);
     writeln("Successfully parsed folder at: "~filepath);
 

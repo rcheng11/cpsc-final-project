@@ -21,6 +21,9 @@ JSONValue parseJSONFromFile(string jsonFilePath){
 int jsonToInt(JSONValue val){
     return cast(int)val.integer;
 }
+float jsonToFloat(JSONValue val){
+    return cast(float)val.floating;
+}
 string jsonToString(JSONValue val){
     return val.to!string.strip('"');
 }
