@@ -3,14 +3,20 @@ module parser;
 import std.stdio;
 import std.file;
 import std.json;
+import jsonabstraction;
 import std.path;
 import std.array;
 
 import bindbc.sdl;
+import bindbc.opengl;
+
+import gtk.MessageDialog;
+import texture;
 
 /*
 This file is responsible for parsing folders that contain
-Psuedo3D data in a structured way.
+Psuedo3D data in a structured way and also for defining
+P3D objects.
 
 The folder must contain the following exactly named:
 - ImageData folder: contains a series of images with number that
@@ -33,6 +39,11 @@ Here is what a sample folder looks like:
 -------> 2.png
 ----> spec.json
 */
+
+void validateBounds(){
+
+}
+
 class P3DAppSettings{
     /*Class that stores information about general settings
     for the application including:
@@ -52,6 +63,9 @@ class P3DLight{
     int mHAngle;
     string mColor;
     float mIntensity;
+    this(int mVAngle, int mHAngle, string mColor, float mIntensity){
+
+    }
 }
 class P3DSlice{
     /* Class representing a slice of a sprite stack. Slices
@@ -64,13 +78,21 @@ class P3DSlice{
     - mVAngle: the vAngle to skew the slice at (degrees)
     - mHAngle: the HAngle to skew the slice at (degrees)
     */
-    Gluint mTexture;
+    Texture mSprite;
+    Texture mNormalMap;
     float mX;
     float mY;
     float mZ;
     int mVAngle;
     int mHAngle;
 
+    this(Texture sprite, Texture normalMap, float x, float y, float z){
+        mX = x;
+        mY = y;
+        mZ = z;
+        mSprite = sprite;
+        mNormalMap = normalMap;
+    }
 }
 class P3DSpriteStack{
     /* Class representing a sprite stack. This includes information about:
@@ -106,6 +128,18 @@ class P3DObj{
         mFilepath = filepath;
         modelName = split(mFilepath, dirSeparator)[$-1]; 
         // create mSpriteStack from directory:
+        mSpriteStack = new P3DSpriteStack();
+        // use the JSON file to determine the number of layers
+        JSONValue fileContents = parseJSONFromFile(buildPath(filepath, "spec.json"));
+        int numLayers = jsonToInt(fileContents["numLayers"]);
+        for(int i = 0; i < numLayers; i++){
+            // create a normal map and image texture (both png) 
+
+            // create a P3D slice
+
+            // add slice to sprite stack
+        }
+
     }
     void addLight(P3DLight light){
         mLights ~= light;
@@ -115,6 +149,7 @@ class P3DObj{
 class P3DScene{
     /* To be implemented later, time permitting. */
 }
+
 bool validateFolder(string filePath){
     /* Helper function that throws an error
     if the filepath submitted IS NOT a folder

@@ -36,7 +36,7 @@ Temp GUI function to be refactored later as
 a class.
 */
 void runGUI(string[] args){
-    string loadingFile = "";
+    string loadingFile = "./assets/samples/sample1"; // preloaded
     // window setup
 	Main.init(args);
 	MainWindow mainApp = new MainWindow("Pseudo-3D App");
@@ -71,7 +71,7 @@ void runGUI(string[] args){
     auto label = new Label("Relative File Path: ");
 
     // create entry
-    Entry entry = new Entry();
+    Entry entry = new Entry("./assets/samples/sample1");
     entry.setSizeRequest(300, 50);
     entry.addOnChanged(delegate void(EditableIF e){
         loadingFile = entry.getText();

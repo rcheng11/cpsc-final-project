@@ -2,9 +2,9 @@
 	"fileVersion": 1,
 	"versions": {
 		"bindbc-common": "1.0.5",
-		"bindbc-loader": "1.1.5",
+		"bindbc-loader": "1.1.0",
 		"bindbc-opengl": "1.1.1",
-		"bindbc-sdl": "1.5.1",
+		"bindbc-sdl": "1.5.2",
 		"gtk-d": "3.11.0"
 	}
 }

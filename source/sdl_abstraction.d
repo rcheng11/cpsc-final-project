@@ -69,6 +69,24 @@ shared static this(){
 					writeln("\nNote:   If SDL2 was loaded, it *may*\n\tbe compatible with SDL3 function calls, \n\tbut some functions different.");
 				}
 		}
+
+		// load SDL Image library
+		SDLImageSupport ret = loadSDLImage();
+		// Error if SDL Image cannot be loaded
+		if(ret != sdlImageSupport){
+				writeln("error loading SDL Image library");    
+				foreach( info; loader.errors){
+						writeln(info.error,':', info.message);
+				}
+		}
+		if(ret == SDLImageSupport.noLibrary){
+				writeln("error no Image library found");    
+		}
+		if(ret == SDLImageSupport.badLibrary){
+				writeln("Error badLibrary Image, missing symbols, perhaps an older or very new version of SDL is causing the problem?");
+		}
+
+
 		// Initialize SDL
 		if(SDL_Init(SDL_INIT_EVERYTHING) !=0){
 				writeln("SDL_Init: ", fromStringz(SDL_GetError()));

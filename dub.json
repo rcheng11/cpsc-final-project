@@ -4,7 +4,7 @@
 	],
 	"copyright": "Copyright © 2025, Ron",
 	"dependencies": {
-		"bindbc-loader": "1.0.3",
+		"bindbc-loader": "1.1.0",
 		"bindbc-opengl": "~>1.1.1",
 		"bindbc-sdl": "~>1.5.1",
 		"gtk-d": "~>3.11.0"
@@ -16,6 +16,7 @@
 		"."
 	],
 	"versions": [
-		"GL_41"
+		"GL_41",
+		"SDL_Image_201"
 	]
 }
