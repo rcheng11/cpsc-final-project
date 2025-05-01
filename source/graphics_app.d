@@ -1,260 +1,236 @@
-module graphics_app;
 
+
+/// The main graphics application with the main graphics loop.
+module graphics_app;
 import std.stdio;
-import sdl_abstraction;
-import opengl_abstraction;
+import core;
+import mesh, linear, scene, materials, geometry, rendertarget, graphics_window;
+import utility;
 import parser;
+import platform;
+import std.math;
+
 import bindbc.sdl;
 import bindbc.opengl;
 
-/// Create a basic shader
-/// The result is a 'GLuint' representing the compiled 'program object' or otherwise 'graphics pipeline'
-/// that is compiled and ready to execute on the GPU.
-GLuint BuildBasicShader(string vertexShaderSourceFilename, string fragmentShaderSourceFilename){
-
-    // Local nested function -- not meant for otherwise calling freely
-    void CheckShaderError(GLuint shaderObject){
-        // Retrieve the result of our compilation
-        int result;
-        // Our goal with glGetShaderiv is to retrieve the compilation status
-        glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &result);
-
-        if(result == GL_FALSE){
-            int length;
-            glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &length);
-            GLchar[] errorMessages = new GLchar[length];
-            glGetShaderInfoLog(shaderObject, length, &length, errorMessages.ptr);
-        }
-    }
-
-    import std.file;
-    GLuint programObjectID;
-
-    // Compile our shaders
-    GLuint vertexShader;
-    GLuint fragmentShader;
-
-    // Use a string mixin to simply 'load' the text from a file into these
-    // strings that will otherwise be processed.
-    string vertexSource 	= readText(vertexShaderSourceFilename);
-    string fragmentSource 	= readText(fragmentShaderSourceFilename);
-
-    // Compile vertex shader
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    const char* vertSource = vertexSource.ptr;
-    glShaderSource(vertexShader, 1, &vertSource, null);
-    glCompileShader(vertexShader);
-    CheckShaderError(vertexShader);
-
-    // Compile fragment shader
-    fragmentShader= glCreateShader(GL_FRAGMENT_SHADER);
-    const char* fragSource = fragmentSource.ptr;
-    glShaderSource(fragmentShader, 1, &fragSource, null);
-    glCompileShader(fragmentShader);
-    CheckShaderError(fragmentShader);
-
-    // Create shader pipeline
-    programObjectID = glCreateProgram();
-
-    // Link our two shader programs together.
-    // Consider this the equivalent of taking two .cpp files, and linking them into
-    // one executable file.
-    glAttachShader(programObjectID,vertexShader);
-    glAttachShader(programObjectID,fragmentShader);
-    glLinkProgram(programObjectID);
-
-    // Validate our program
-    glValidateProgram(programObjectID);
-
-    // Once our final program Object has been created, we can
-    // detach and then delete our individual shaders.
-    glDetachShader(programObjectID,vertexShader);
-    glDetachShader(programObjectID,fragmentShader);
-    // Delete the individual shaders once we are done
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return programObjectID;
-}
-
-
-struct Mesh{
-    GLuint mVAO;
-    GLuint mVBO;
-}
-
-/// Setup triangle with OpenGL buffers
-Mesh MakeTriangleFactory(){
-    Mesh m;
-
-    // Geometry Data
-    const GLfloat[] mVertexData =
-        [
-        -0.5f,  -0.5f, 0.0f, 	// Left vertex position
-        1.0f,   0.0f, 0.0f, 	// color
-        0.5f,  -0.5f, 0.0f,  	// right vertex position
-        0.0f,   1.0f, 0.0f,  	// color
-        0.0f,   0.5f, 0.0f,  	// Top vertex position
-        0.0f,   0.0f, 1.0f,  	// color
-        ];
-    pragma(msg, mVertexData.length);
-
-    // Vertex Arrays Object (VAO) Setup
-    glGenVertexArrays(1, &m.mVAO);
-    // We bind (i.e. select) to the Vertex Array Object (VAO) that we want to work withn.
-    glBindVertexArray(m.mVAO);
-
-    // Vertex Buffer Object (VBO) creation
-    glGenBuffers(1, &m.mVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, m.mVBO);
-    glBufferData(GL_ARRAY_BUFFER, mVertexData.length* GLfloat.sizeof, mVertexData.ptr, GL_STATIC_DRAW);
-
-    // Vertex attributes
-    // Atribute #0
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, GLfloat.sizeof*6, cast(void*)0);
-
-    // Attribute #1
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, GLfloat.sizeof*6, cast(GLvoid*)(GLfloat.sizeof*3));
-
-    // Unbind our currently bound Vertex Array Object
-    glBindVertexArray(0);
-    // Disable any attributes we opened in our Vertex Attribute Arrray,
-    // as we do not want to leave them open. 
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-
-    return m;
-}
-
-
-
+/// The main graphics application.
 struct GraphicsApp{
-    bool mGameIsRunning=true;
-    SDL_GLContext mContext;
-    SDL_Window* mWindow;
+		bool mGameIsRunning		= true;
+		bool mRenderWireframe = false;
+		bool mStopRotation = false;
+        bool mStopLightRotation = false;
+        P3DObj mObj;
+        float mShearAmt = ToRadians(-40.0);
+        float mLightAngle = 0.0;
 
-    Mesh mTriangleMesh;
-    GLuint mBasicGraphicsPipeline;
-    P3DObj mObj; // sprite stack object
+		vec3 lightPos;
+		
+		// Window for the graphics application
+		GraphicsWindow mWindow;
+		// Scene
+		SceneTree mSceneTree;
+		// Camera
+		Camera mCamera;
+		// Renderer
+		Renderer mRenderer;	
+		// Note: For future, you can use for post rendering effects on the renderer
+    //		PostRenderDraw mPostRenderer;
 
-    int mScreenWidth = 640;
-    int mScreenHeight = 480;
+		/// Setup OpenGL and any libraries
+		this(int screenWidth, int screenHeight, string title, int major_ogl_version, int minor_ogl_version){
+				// Create a window
+				mWindow = new OpenGLWindow(title, major_ogl_version, minor_ogl_version);
+				// Create a renderer
+        // NOTE: For now, our renderer will draw into the default renderbuffer (so 'null' for final pamater.
+				mRenderer = new Renderer(mWindow,screenWidth,screenHeight, null);
+        // NOTE: In future, you can create a custom render target to draw to as follows.
+				//       mRenderer = new Renderer(mWindow,640,480, new RenderTarget(640,480));
+				// Handle effects for the renderer
+        // mPostRenderer = new PostRenderDraw("screen","./pipelines/screen/"); 
 
-    /// Setup OpenGL and any libraries
-    this(int width, int height){
-        mScreenWidth = width;
-        mScreenHeight = height;
+				// Create a camera
+				mCamera = new Camera();
+				// Create (or load) a Scene Tree
+				mSceneTree = new SceneTree("root");
+		}
 
-        // Setup SDL OpenGL Version
-        SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 4 );
-        SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 1 );
-        SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
-        // We want to request a double buffer for smooth updating.
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+		/// Destructor
+		~this(){
 
-        // Create an application window using OpenGL that supports SDL
-        mWindow = SDL_CreateWindow( "dlang - OpenGL",
-                SDL_WINDOWPOS_UNDEFINED,
-                SDL_WINDOWPOS_UNDEFINED,
-                mScreenWidth,
-                mScreenHeight,
-                SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
+		}
 
-        // Create the OpenGL context and associate it with our window
-        mContext = SDL_GL_CreateContext(mWindow);
+		/// Handle input
+		void Input(){
+				// Store an SDL Event
+				SDL_Event event;
+				while(SDL_PollEvent(&event)){
+						if(event.type == SDL_QUIT){
+								writeln("Exit event triggered (probably clicked 'x' at top of the window)");
+								mGameIsRunning= false;
+						}
+						if(event.type == SDL_KEYDOWN){
+								if(event.key.keysym.scancode == SDL_SCANCODE_ESCAPE){
+										writeln("Pressed escape key and now exiting...");
+										mGameIsRunning= false;
+								}else if(event.key.keysym.sym == SDLK_TAB){
+										mRenderWireframe = !mRenderWireframe;
+								}
+								else if(event.key.keysym.sym == SDLK_DOWN){
+										mCamera.MoveBackwardZ();
+								}
+								else if(event.key.keysym.sym == SDLK_UP){
+										mCamera.MoveForwardZ();
+								}
+								else if(event.key.keysym.sym == SDLK_LEFT){
+										mCamera.MoveLeft();
+								}
+								else if(event.key.keysym.sym == SDLK_RIGHT){
+										mCamera.MoveRight();
+								}
+								else if(event.key.keysym.sym == SDLK_a){
+										mCamera.MoveUp();
+								}
+								else if(event.key.keysym.sym == SDLK_z){
+										mCamera.MoveDown();
+								}
+                                else if(event.key.keysym.sym == SDLK_i){
+										// mCamera.TurnUp(1);
+                                        mShearAmt += ToRadians(1);
+								}
+                                else if(event.key.keysym.sym == SDLK_k){
+										// mCamera.TurnDown(1);
+                                        mShearAmt -= ToRadians(1);
+								}
+                                else if(event.key.keysym.sym == SDLK_j){
+										mCamera.TurnLeft(1);
+								}
+                                else if(event.key.keysym.sym == SDLK_l){
+										mCamera.TurnRight(1);
+								}
+								else if(event.key.keysym.sym == SDLK_r){
+									mStopRotation = !mStopRotation;
+								}
+                                else if(event.key.keysym.sym == SDLK_e){
+									mStopLightRotation = !mStopLightRotation;
+								}
+								writeln("Camera Position: ",mCamera.mEyePosition);
+						}
+				}
 
-        // Load OpenGL Function calls
-        auto retVal = LoadOpenGLLib();
+				// Retrieve the mouse position
+				// int mouseX,mouseY;
+				// SDL_GetMouseState(&mouseX,&mouseY);
+				// mCamera.MouseLook(mouseX,mouseY);
 
-        // Check OpenGL version
-        GetOpenGLVersionInfo();
-    }
+		}
+        void loadModel(P3DObj obj){
+            // load model (only call after OpenGL instance loaded!)
+            mObj = obj;
+            obj.initialize(); // loads textures
+        }
+		/// A helper function to setup a scene.
+		/// NOTE: In the future this can use a configuration file to otherwise make our graphics applications
+		///       data-driven.
+		void SetupScene(){
+				// Normal Map pipeline creation
+				Pipeline  normalMap      = new Pipeline("normalmap","./pipelines/normalmap/");
+				lightPos = vec3(0, 3.0, -1.25); // initialize light location
 
-    ~this(){
-        // Destroy our context
-        SDL_GL_DeleteContext(mContext);
-        // Destroy our window
-        SDL_DestroyWindow(mWindow);
-    }
-    void loadModel(P3DObj obj){
-        // load model (only call after OpenGL instance loaded!)
-        // load textures
-        mObj = obj;
-        obj.initialize();
-    }
-    /// Handle input
-    void Input(){
-        // Store an SDL Event
-        SDL_Event event;
-        while(SDL_PollEvent(&event)){
-            if(event.type == SDL_QUIT){
-                writeln("Exit event triggered (probably clicked 'x' at top of the window)");
-                mGameIsRunning= false;
-            }
-            if(event.type == SDL_KEYDOWN){
-                if(event.key.keysym.scancode == SDL_SCANCODE_ESCAPE){
-                    writeln("Pressed escape key and now exiting...");
-                    mGameIsRunning= false;
-                }else{
-                    writeln("Pressed a key ");
+                foreach(slice ; mObj.getSpriteStack().getSlices()){
+                    IMaterial normalMaterial = new NormalMapMaterial("normalmap",slice);
+                    // Create an slice and add it to scene tree
+                    ISurface obj = MakeTexturedNormalMappedQuad(slice);
+                    MeshNode  m  = new MeshNode("quad",obj,normalMaterial);
+                    mSceneTree.GetRootNode().AddChildSceneNode(m);
+                    slice.attachMeshNode(m);
+
+                    normalMaterial.AddUniform(new Uniform("uModel", "mat4", m.mModelMatrix.DataPtr()));
+                    normalMaterial.AddUniform(new Uniform("uView", "mat4", mCamera.mViewMatrix.DataPtr()));
+                    normalMaterial.AddUniform(new Uniform("uProjection", "mat4", mCamera.mProjectionMatrix.DataPtr()));
+                    // set the light and view positions
+                    normalMaterial.AddUniform(new Uniform("lightPos", "vec3", &lightPos));
+                    normalMaterial.AddUniform(new Uniform("viewPos", "vec3", mCamera.mEyePosition.DataPtr()));
                 }
-            }
-        }
-    }
+		}
 
-    void SetupScene(){
-        // Build a basic shader
-        mBasicGraphicsPipeline = BuildBasicShader("./pipelines/basic/basic.vert","./pipelines/basic/basic.frag");
-        // Build a triangle
-        mTriangleMesh = MakeTriangleFactory();
-    }
+		/// Update gamestate
+		void Update(){
+				// A rotation value that 'updates' every frame to give some animation in our scene
+				static float yRotation = 0.0f;
+				if(!mStopRotation){
+					yRotation += 0.01f;
+				}
 
-    /// Update gamestate
-    void Update(){
-    }
+                float radius = 4.0;
+                // float time = SDL_GetTicks() / 500.0f;
+                if(!mStopLightRotation){
+                    mLightAngle += ToRadians(1);
+                    lightPos.x = sin(mLightAngle) * radius;
+                    lightPos.y = 2.0;
+                    lightPos.z = cos(mLightAngle) * radius - 1.25; // offset
+				}
 
-    void Render(){
-        // Clear the renderer each time we render
-        const ubyte* state = SDL_GetKeyboardState(null);
-        glClearColor(0.0f,0.6f,0.8f,1.0f);
-        if (state[SDL_SCANCODE_1]) {
-            glClearColor(1.0f,0.0f,0.0f,1.0f);
-        }
-        if (state[SDL_SCANCODE_2]) {
-            glClearColor(0.0f,1.0f,0.0f,1.0f);
-        }
-        if (state[SDL_SCANCODE_3]) {
-            glClearColor(0.0f,0.0f,1.0f,1.0f);
-        }
-        glClear(GL_COLOR_BUFFER_BIT);
+                // float radius = 3.0f;
+				// float time = SDL_GetTicks() / 500.0f;
+				// lightPos.x = 0;
+				// lightPos.y = cos(time) * radius;
+				// lightPos.z = sin(time) * radius;
 
-        // Do opengl drawing
-        glUseProgram(mBasicGraphicsPipeline);
-        glBindVertexArray(mTriangleMesh.mVAO);
-        glDrawArrays(GL_TRIANGLES,0,3);
+				// Update our first object
+				// MeshNode m = cast(MeshNode)mSceneTree.FindNode("quad");
+				// Transform our mesh node
+				// Note: Before most transformations, we set the 'identity' matrix, and then
+				//       perform our transformations.
 
-        // Final step is to present what we have copied into
-        // video memory
-        SDL_GL_SwapWindow(mWindow);
-    }
+                foreach(slice ; mObj.getSpriteStack().getSlices()){
+                    slice.mMeshNode.LoadIdentity()
+                        .Translate(slice.mX, slice.mY, slice.mZ)
+                        .RotateX(mShearAmt)
+                        .RotateZ(yRotation);
+                }
+		}
 
-    /// Process 1 frame
-    void AdvanceFrame(){
-        Input();
-        Update();
-        Render();
-    }
+		/// Render our scene by traversing the scene tree from a specific viewpoint
+		void Render(){
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				if(mRenderWireframe){
+						glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); 
+				}else{
+						glPolygonMode(GL_FRONT_AND_BACK,GL_FILL); 
+				}
 
-    /// Main application loop
-    void Loop(){
-        // Setup the graphics scene
-        SetupScene();
-        // Run the graphics application loop
-        while(mGameIsRunning){
-            AdvanceFrame();
-        }
-    }
+				// Render the scene tree form a specific camera
+				mRenderer.Render(mSceneTree, mCamera);
+				// Post renderer
+				//mPostRenderer.PostRender(mRenderer);
+		}
+
+		/// Process 1 frame
+		void AdvanceFrame(){
+				Input();
+				Update();
+				Render();
+
+				SDL_Delay(16);	// NOTE: This is a simple way to cap framerate at 60 FPS,
+												// 		   you might be inclined to improve things a bit.
+		}
+
+		/// Main application loop
+		void Loop(){
+				// Setup the graphics scene
+				SetupScene();
+
+				// Lock mouse to center of screen
+				// This will help us get a continuous rotation.
+				// NOTE: On occasion folks on virtual machine or WSL may not have this work,
+				//       so you'll have to compute the 'diff' and reposition the mouse yourself.
+				SDL_WarpMouseInWindow(mWindow.mWindow,640/2,320/2);
+
+				// Run the graphics application loop
+				while(mGameIsRunning){
+						AdvanceFrame();
+				}
+		}
 }
+

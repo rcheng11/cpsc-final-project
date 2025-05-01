@@ -231,9 +231,9 @@ void launchProjectWindow(P3DObj model){
     int previewW = 640;
     launchSDLBtn.addOnClicked(delegate void(Button b) {
         writeln("button clicked");
-        app = GraphicsApp(previewW, previewH);
-        app.SetupScene();
+        app = GraphicsApp(previewW, previewH, "dlang - OpenGL 4+ Graphics Framework",4,1);
         app.loadModel(model);
+        app.SetupScene();
         // technique here borrowed from former groupmate Alexis Nketia
         // from our final project for Game Engines class
         int counter = 0;
@@ -241,7 +241,7 @@ void launchProjectWindow(P3DObj model){
             app.AdvanceFrame();
             bool appRunning = app.mGameIsRunning;
             if(!appRunning){ // kill the app data/window when running stops
-                destroy(app);
+                destroy(app.mWindow);
             }
             return appRunning;
         });

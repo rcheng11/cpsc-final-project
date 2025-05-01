@@ -1,0 +1,59 @@
+{
+    "numLayers" : 6,
+    "stackVAngle" : 5,
+    "stackHAngle" : 5,
+    "settings" : {
+        "setting1" : "val",
+        "setting2" : "val"
+    },
+    "layers" : [
+        {
+            "id" : "0",
+            "x" : 0.0,
+            "y" : 0.0,
+            "z" : -1.25,
+            "vAngle" : 0,
+            "hAngle" : 0
+        },
+        {
+            "id" : "1",
+            "x" : 0.0,
+            "y" : 0.2,
+            "z" : -1.25,
+            "vAngle" : 0,
+            "hAngle" : 0
+        },
+        {
+            "id" : "2",
+            "x" : 0.0,
+            "y" : 0.4,
+            "z" : -1.25,
+            "vAngle" : 0,
+            "hAngle" : 0
+        },
+        {
+            "id" : "3",
+            "x" : 0.0,
+            "y" : 0.6,
+            "z" : -1.0,
+            "vAngle" : 0,
+            "hAngle" : 0
+        },
+        {
+            "id" : "4",
+            "x" : 0.0,
+            "y" : 0.8,
+            "z" : -1.0,
+            "vAngle" : 0,
+            "hAngle" : 0
+        },
+        {
+            "id" : "5",
+            "x" : 0.0,
+            "y" : 1.1,
+            "z" : -1.25,
+            "vAngle" : 0,
+            "hAngle" : 0
+        }
+    ]
+}

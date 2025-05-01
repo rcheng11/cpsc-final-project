@@ -7,6 +7,8 @@ import jsonabstraction;
 import std.path;
 import std.array;
 import std.conv;
+import vec, mat;
+import mesh;
 
 import bindbc.sdl;
 import bindbc.opengl;
@@ -81,6 +83,8 @@ class P3DSlice{
     */
     Texture mSprite;
     Texture mNormalMap;
+    float texWidth; // width and height of the sprite/normal map
+    float texHeight;
     string mSpriteFPath;
     string mNormalFPath;
     float mX;
@@ -88,6 +92,7 @@ class P3DSlice{
     float mZ;
     int mVAngle;
     int mHAngle;
+    MeshNode mMeshNode;
 
     this(string spriteFPath, string normalFPath, float x, float y, float z, int vAngle, int hAngle){
         mX = x;
@@ -105,6 +110,21 @@ class P3DSlice{
         mNormalMap = new Texture(mNormalFPath);
 
     }
+    void attachMeshNode(MeshNode meshNode){
+        mMeshNode = meshNode;
+    }
+    Texture getSpriteTexture(){
+        return mSprite;
+    }
+    Texture getNormalTexture(){
+        return mNormalMap;
+    }
+    int getTexWidth(){
+        return mSprite.mWidth;
+    }
+    int getTexHeight(){
+        return mSprite.mHeight;
+    }
 }
 class P3DSpriteStack{
     /* Class representing a sprite stack. This includes information about:
@@ -115,6 +135,7 @@ class P3DSpriteStack{
     int mVAngle = 0;
     int mHAngle = 0;
     P3DSlice[] mSlices;
+    
     this(){
         mSlices = [];
     }
@@ -127,11 +148,22 @@ class P3DSpriteStack{
         mSlices ~= slice;
         return slice;
     }
+    P3DSlice[] getSlices(){
+        return mSlices;
+    }
     void setVAngle(int vAngle){
         mVAngle = vAngle;
+        // pass down VAngle to slices
+        foreach(slice ; mSlices){
+            slice.mVAngle = vAngle;
+        }
     }
     void setHAngle(int hAngle){
         mHAngle = hAngle;
+        // pass down HAngle to slices
+        foreach(slice ; mSlices){
+            slice.mHAngle = hAngle;
+        }
     }
 }
 class P3DObj{
@@ -147,6 +179,7 @@ class P3DObj{
     string modelName;
     P3DSpriteStack mSpriteStack;
     P3DLight[] mLights;
+    
     this(string filepath){
         mFilepath = filepath;
         modelName = split(mFilepath, dirSeparator)[$-1]; 
@@ -195,6 +228,9 @@ class P3DObj{
     }
     int getHAngle(){
         return mSpriteStack.mHAngle;
+    }
+    P3DSpriteStack getSpriteStack(){
+        return mSpriteStack;
     }
     void addLight(P3DLight light){
         mLights ~= light;
